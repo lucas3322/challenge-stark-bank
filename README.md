@@ -73,48 +73,80 @@ O Cloud Run fornece uma URL HTTPS permanente — sem necessidade de ngrok.
 
 ### Pré-requisitos
 
-```bash
-# Instalar Google Cloud CLI
-brew install google-cloud-sdk   # macOS
+- Conta no [Google Cloud Platform](https://console.cloud.google.com)
+- Projeto GCP criado com **faturamento ativo** (cartão necessário para ativar, mas o free tier cobre o uso do projeto)
+- Google Cloud CLI instalado
 
-# Autenticar
+```bash
+# macOS
+brew install google-cloud-sdk
+
+# Outros sistemas: https://cloud.google.com/sdk/docs/install
+```
+
+### 1. Autenticar e configurar o projeto
+
+```bash
 gcloud auth login
 gcloud config set project SEU_PROJECT_ID
 ```
 
-### Deploy
+### 2. Vincular conta de faturamento
 
 ```bash
-# Build e push da imagem
-gcloud builds submit --tag gcr.io/SEU_PROJECT_ID/stark-bank
+# Listar contas disponíveis
+gcloud billing accounts list
 
-# Deploy no Cloud Run
+# Vincular a conta aberta (OPEN: True) ao projeto
+gcloud billing projects link SEU_PROJECT_ID --billing-account=SEU_BILLING_ACCOUNT_ID
+```
+
+### 3. Habilitar as APIs necessárias
+
+```bash
+gcloud services enable cloudbuild.googleapis.com run.googleapis.com
+```
+
+> Se receber erro de permissão na conta de serviço, rode:
+> ```bash
+> gcloud projects add-iam-policy-binding SEU_PROJECT_ID \
+>   --member="serviceAccount:SEU_PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+>   --role="roles/storage.objectViewer"
+> ```
+> O número do projeto aparece no console do GCP ou com `gcloud projects describe SEU_PROJECT_ID`.
+
+### 4. Deploy
+
+```bash
 gcloud run deploy stark-bank \
-  --image gcr.io/SEU_PROJECT_ID/stark-bank \
+  --source . \
   --platform managed \
   --region us-central1 \
   --allow-unauthenticated \
   --min-instances 1 \
-  --set-env-vars "STARKBANK_PROJECT_ID=seu-id" \
+  --set-env-vars "STARKBANK_PROJECT_ID=SEU_PROJECT_ID" \
   --set-env-vars "STARKBANK_ENVIRONMENT=sandbox" \
-  --set-env-vars "STARKBANK_PRIVATE_KEY=-----BEGIN EC PARAMETERS-----
-...
------END EC PRIVATE KEY-----"
+  --set-env-vars "STARKBANK_PRIVATE_KEY=SUA_CHAVE_PRIVADA"
 ```
 
-> `--min-instances 1` é obrigatório para o cron job continuar rodando. Sem isso o container hiberna e as execuções de 3 em 3 horas param.
+> **`--min-instances 1` é obrigatório.** Sem isso o container hiberna quando não há requisições e o cron job de 3 em 3 horas para de funcionar.
 
-Após o deploy, a URL será exibida:
+Ao final do deploy a URL é exibida:
+
 ```
-Service URL: https://stark-bank-xxxx-uc.a.run.app
+Service URL: https://stark-bank-XXXX.us-central1.run.app
 ```
 
-Cadastre no Stark Bank:
-- **URL do webhook:** `https://stark-bank-xxxx-uc.a.run.app/webhook`
+### 5. Cadastrar o webhook no Stark Bank
 
-### Variáveis de ambiente no Cloud Run
+No dashboard do Stark Bank:
+> **Configurações → Integrações → Webhooks → Novo Webhook**
+> - **URL:** `https://stark-bank-XXXX.us-central1.run.app/webhook`
+> - **Assinatura:** `invoice`
 
-Nunca suba o `.env` para a imagem. Passe as credenciais como variáveis de ambiente no deploy (conforme o comando acima) ou pelo console do GCP em:
+### Variáveis de ambiente
+
+Nunca inclua o `.env` na imagem Docker — ele está no `.dockerignore`. Passe as credenciais via `--set-env-vars` no deploy ou pelo console do GCP:
 
 > **Cloud Run → seu serviço → Editar → Variáveis de ambiente**
 
