@@ -5,6 +5,9 @@ import { sseBus } from '../api/sse';
 
 const router = express.Router();
 
+// Prevents double-transfer when both 'paid' and 'credited' events fire for the same invoice
+const processedInvoices = new Set<string>();
+
 router.post('/', async (req: Request, res: Response): Promise<void> => {
   res.status(200).send('OK');
 
@@ -19,9 +22,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     const invoice = (event as any).log?.invoice;
     const logType: string = (event as any).log?.type ?? '';
 
-    // 'credited' = production flow; 'paid' = sandbox may only send this
     const TRIGGER_TYPES = ['credited', 'paid'];
     if (!TRIGGER_TYPES.includes(logType) || !invoice) return;
+
+    if (processedInvoices.has(invoice.id)) {
+      console.log(`[WebhookServer] Invoice ${invoice.id} already processed — skipping duplicate.`);
+      return;
+    }
+    processedInvoices.add(invoice.id);
 
     console.log(`[WebhookServer] Invoice ${invoice.id} ${logType} — triggering transfer.`);
     sseBus.emit('event', {
