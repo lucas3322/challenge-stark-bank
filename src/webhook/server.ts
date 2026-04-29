@@ -9,17 +9,20 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
   try {
     const signature = req.headers['digital-signature'] as string;
-    const body = JSON.stringify(req.body);
+    const content = (req.body as Buffer).toString('utf-8');
 
-    const event = await starkbank.event.parse({ content: body, signature });
+    const event = await starkbank.event.parse({ content, signature });
 
     if (event.subscription !== 'invoice') return;
 
     const invoice = (event as any).log?.invoice;
     const logType: string = (event as any).log?.type ?? '';
 
-    if (logType !== 'credited' || !invoice) return;
+    // 'credited' = production flow; 'paid' = sandbox may only send this
+    const TRIGGER_TYPES = ['credited', 'paid'];
+    if (!TRIGGER_TYPES.includes(logType) || !invoice) return;
 
+    console.log(`[WebhookServer] Invoice ${invoice.id} ${logType} — triggering transfer.`);
     await transferInvoiceCredit(invoice.id, invoice.amount, invoice.fee ?? 0);
   } catch (err) {
     console.error('[WebhookServer] Error processing event:', err);
@@ -28,7 +31,6 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
 
 export function createWebhookServer(): express.Application {
   const app = express();
-  app.use(express.json());
-  app.use('/webhook', router);
+  app.use('/webhook', express.raw({ type: 'application/json' }), router);
   return app;
 }
