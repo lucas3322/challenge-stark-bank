@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stark Bank Dashboard</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --border: #2a2d3a;
+      --accent: #414141;
+      --accent-hover: #2d2d2d;
+      --green: #10b981;
+      --yellow: #f59e0b;
+      --red: #ef4444;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --radius: 10px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 24px;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 28px;
+    }
+
+    header h1 { font-size: 1.25rem; font-weight: 600; letter-spacing: -0.01em; }
+    header span { font-size: 0.75rem; color: var(--muted); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) { .grid { grid-template-columns: 1fr; } }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+
+    .card-title {
+      font-size: 0.7rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+      margin-bottom: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    /* Balance */
+    .balance-value {
+      font-size: 2rem;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      color: var(--green);
+    }
+
+    .balance-label { font-size: 0.75rem; color: var(--muted); margin-top: 4px; }
+
+    /* Button */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--accent);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn:hover { background: var(--accent-hover); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-sm { padding: 5px 12px; font-size: 0.75rem; }
+
+    /* Table */
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+    th { color: var(--muted); font-weight: 500; text-align: left; padding: 0 8px 10px; }
+    td { padding: 10px 8px; border-top: 1px solid var(--border); vertical-align: middle; }
+    tr:hover td { background: rgba(255,255,255,0.02); }
+    .mono { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 0.72rem; color: var(--muted); }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 0.68rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-created  { background: #1e3a5f; color: #60a5fa; }
+    .badge-paid     { background: #14532d; color: #4ade80; }
+    .badge-credited { background: #064e3b; color: #10b981; }
+    .badge-overdue  { background: #7c2d12; color: #fb923c; }
+    .badge-expired  { background: #2a2d3a; color: #94a3b8; }
+    .badge-canceled { background: #2a2d3a; color: #94a3b8; }
+
+    /* Feed */
+    .feed { display: flex; flex-direction: column; gap: 8px; max-height: 340px; overflow-y: auto; }
+    .feed-empty { color: var(--muted); font-size: 0.8rem; text-align: center; padding: 32px 0; }
+
+    .feed-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 10px 12px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border);
+      border-radius: 7px;
+      animation: slide-in 0.25s ease;
+    }
+
+    @keyframes slide-in {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    .feed-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--green);
+      flex-shrink: 0;
+      margin-top: 4px;
+    }
+
+    .feed-body { flex: 1; }
+    .feed-name { font-size: 0.8rem; font-weight: 600; }
+    .feed-meta { font-size: 0.72rem; color: var(--muted); margin-top: 2px; }
+    .feed-amount { font-size: 0.85rem; font-weight: 700; color: var(--green); white-space: nowrap; }
+
+    .dot-live {
+      display: inline-block;
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse 1.4s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    .spinner {
+      display: inline-block;
+      width: 12px; height: 12px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .full-width { grid-column: 1 / -1; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Stark Bank Dashboard</h1>
+    <span id="last-update">—</span>
+  </header>
+
+  <div class="grid">
+
+    <!-- Balance -->
+    <div class="card">
+      <div class="card-title">Saldo atual</div>
+      <div class="balance-value" id="balance">—</div>
+      <div class="balance-label">sandbox</div>
+    </div>
+
+    <!-- Create batch -->
+    <div class="card" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;">
+      <div>
+        <div class="card-title" style="margin-bottom:4px;">Criar lote de faturas</div>
+        <div style="font-size:0.78rem;color:var(--muted);">Dispara entre 8 e 12 novas invoices</div>
+      </div>
+      <button class="btn" id="btn-create" onclick="createBatch()">
+        ＋ Criar agora
+      </button>
+    </div>
+
+    <!-- Invoices table -->
+    <div class="card full-width">
+      <div class="card-title">
+        Últimas faturas
+        <button class="btn btn-sm" onclick="loadInvoices()">Atualizar</button>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nome</th>
+              <th>Valor</th>
+              <th>Vencimento</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="invoices-body">
+            <tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px;">Carregando...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Webhook feed -->
+    <div class="card full-width">
+      <div class="card-title">
+        Feed de webhooks <span class="dot-live" style="margin-left:6px;"></span>
+        <button class="btn btn-sm" onclick="clearFeed()">Limpar</button>
+      </div>
+      <div class="feed" id="feed">
+        <div class="feed-empty" id="feed-empty">Aguardando eventos do webhook...</div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    const fmt = (cents) =>
+      'R$ ' + (cents / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+
+    const fmtDate = (iso) =>
+      new Date(iso).toLocaleDateString('pt-BR');
+
+    function setLastUpdate() {
+      document.getElementById('last-update').textContent =
+        'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+    }
+
+    // --- Balance ---
+    async function loadBalance() {
+      try {
+        const r = await fetch('/api/balance');
+        const { amount } = await r.json();
+        document.getElementById('balance').textContent = fmt(amount);
+        setLastUpdate();
+      } catch { /* ignore */ }
+    }
+
+    // --- Invoices ---
+    async function loadInvoices() {
+      const tbody = document.getElementById('invoices-body');
+      tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px;">Carregando...</td></tr>';
+      try {
+        const r = await fetch('/api/invoices');
+        const invoices = await r.json();
+        if (!invoices.length) {
+          tbody.innerHTML = '<tr><td colspan="5" style="color:var(--muted);text-align:center;padding:24px;">Nenhuma fatura encontrada</td></tr>';
+          return;
+        }
+        tbody.innerHTML = invoices.map(inv => `
+          <tr>
+            <td class="mono">${inv.id.slice(-8)}</td>
+            <td>${inv.name}</td>
+            <td style="font-weight:600;">${fmt(inv.amount)}</td>
+            <td class="mono">${inv.due ? fmtDate(inv.due) : '—'}</td>
+            <td><span class="badge badge-${inv.status}">${inv.status}</span></td>
+          </tr>
+        `).join('');
+        setLastUpdate();
+      } catch {
+        tbody.innerHTML = '<tr><td colspan="5" style="color:var(--red);text-align:center;padding:24px;">Erro ao carregar</td></tr>';
+      }
+    }
+
+    // --- Create batch ---
+    async function createBatch() {
+      const btn = document.getElementById('btn-create');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Criando...';
+      try {
+        const r = await fetch('/api/invoices/batch', { method: 'POST' });
+        const { created } = await r.json();
+        btn.textContent = `✓ ${created} criadas`;
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '＋ Criar agora';
+        }, 2500);
+        loadInvoices();
+        loadBalance();
+      } catch {
+        btn.textContent = '✗ Erro';
+        setTimeout(() => {
+          btn.disabled = false;
+          btn.textContent = '＋ Criar agora';
+        }, 2500);
+      }
+    }
+
+    // --- SSE feed ---
+    function clearFeed() {
+      document.getElementById('feed').innerHTML =
+        '<div class="feed-empty" id="feed-empty">Aguardando eventos do webhook...</div>';
+    }
+
+    function addFeedItem(ev) {
+      const feed = document.getElementById('feed');
+      const empty = document.getElementById('feed-empty');
+      if (empty) empty.remove();
+
+      const time = new Date(ev.timestamp).toLocaleTimeString('pt-BR');
+      const net = fmt(ev.amount - ev.fee);
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      item.innerHTML = `
+        <div class="feed-dot"></div>
+        <div class="feed-body">
+          <div class="feed-name">${ev.name}</div>
+          <div class="feed-meta">${time} · Invoice <span class="mono">${ev.invoiceId.slice(-8)}</span> · <strong>${ev.type}</strong> · Taxa: ${fmt(ev.fee)}</div>
+        </div>
+        <div class="feed-amount">${net}</div>
+      `;
+      feed.prepend(item);
+    }
+
+    function connectSSE() {
+      const es = new EventSource('/api/events');
+      es.onmessage = (e) => {
+        const ev = JSON.parse(e.data);
+        addFeedItem(ev);
+        loadBalance();
+        loadInvoices();
+      };
+      es.onerror = () => setTimeout(connectSSE, 3000);
+    }
+
+    // --- Init ---
+    loadBalance();
+    loadInvoices();
+    connectSSE();
+
+    // Refresh balance/invoices every 30s
+    setInterval(() => { loadBalance(); loadInvoices(); }, 30_000);
+  </script>
+</body>
+</html>

@@ -28,7 +28,7 @@ export async function createInvoiceBatch(): Promise<CreatedInvoice[]> {
 
   console.log(`[InvoiceService] Creating ${count} invoices...`);
 
-  const invoices = await starkbank.invoice.create(invoiceData);
+  const invoices = await starkbank.invoice.create(invoiceData as any);
 
   const created: CreatedInvoice[] = invoices.map((inv: any) => ({
     id: inv.id,

@@ -6,7 +6,7 @@ const RUNTIME_HOURS = 24;
 const TOTAL_RUNS = RUNTIME_HOURS / 3; // 8 runs
 
 let runCount = 0;
-let task: cron.ScheduledTask | null = null;
+let task: ReturnType<typeof cron.schedule> | null = null;
 
 async function runBatch(): Promise<void> {
   runCount++;

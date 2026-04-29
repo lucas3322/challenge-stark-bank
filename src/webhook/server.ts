@@ -1,6 +1,7 @@
 import express, { Request, Response } from 'express';
 import starkbank from '../config/starkbank';
 import { transferInvoiceCredit } from '../services/transfer.service';
+import { sseBus } from '../api/sse';
 
 const router = express.Router();
 
@@ -23,6 +24,14 @@ router.post('/', async (req: Request, res: Response): Promise<void> => {
     if (!TRIGGER_TYPES.includes(logType) || !invoice) return;
 
     console.log(`[WebhookServer] Invoice ${invoice.id} ${logType} — triggering transfer.`);
+    sseBus.emit('event', {
+      invoiceId: invoice.id,
+      name: invoice.name,
+      amount: invoice.amount,
+      fee: invoice.fee ?? 0,
+      type: logType,
+      timestamp: new Date().toISOString(),
+    });
     await transferInvoiceCredit(invoice.id, invoice.amount, invoice.fee ?? 0);
   } catch (err) {
     console.error('[WebhookServer] Error processing event:', err);
