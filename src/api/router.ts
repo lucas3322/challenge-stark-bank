@@ -6,30 +6,42 @@ import { registerSseClient } from './sse';
 const router = Router();
 
 router.get('/balance', async (_req: Request, res: Response) => {
-  const balance = await starkbank.balance.get();
-  res.json({ amount: balance.amount });
+  try {
+    const balance = await starkbank.balance.get();
+    res.json({ amount: balance.amount });
+  } catch (err: any) {
+    res.status(502).json({ error: 'Stark Bank sandbox unavailable', detail: err.message });
+  }
 });
 
 router.get('/invoices', async (_req: Request, res: Response) => {
-  const invoices = await starkbank.invoice.query({ limit: 20 });
-  const result: any[] = [];
-  for await (const inv of invoices) {
-    result.push({
-      id: inv.id,
-      name: (inv as any).name,
-      taxId: (inv as any).taxId,
-      amount: inv.amount,
-      status: (inv as any).status,
-      due: (inv as any).due,
-    });
-    if (result.length >= 20) break;
+  try {
+    const invoices = await starkbank.invoice.query({ limit: 20 });
+    const result: any[] = [];
+    for await (const inv of invoices) {
+      result.push({
+        id: inv.id,
+        name: (inv as any).name,
+        taxId: (inv as any).taxId,
+        amount: inv.amount,
+        status: (inv as any).status,
+        due: (inv as any).due,
+      });
+      if (result.length >= 20) break;
+    }
+    res.json(result);
+  } catch (err: any) {
+    res.status(502).json({ error: 'Stark Bank sandbox unavailable', detail: err.message });
   }
-  res.json(result);
 });
 
 router.post('/invoices/batch', async (_req: Request, res: Response) => {
-  const invoices = await createInvoiceBatch();
-  res.json({ created: invoices.length, invoices });
+  try {
+    const invoices = await createInvoiceBatch();
+    res.json({ created: invoices.length, invoices });
+  } catch (err: any) {
+    res.status(502).json({ error: 'Failed to create invoices', detail: err.message });
+  }
 });
 
 router.get('/events', (req: Request, res: Response) => {
