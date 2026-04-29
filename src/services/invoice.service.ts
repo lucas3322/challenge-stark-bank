@@ -17,7 +17,7 @@ function buildInvoice(person: Person): object {
     expiration: 60 * 60 * 24 * 5, // 5 days in seconds
     fine: 2.0,
     interest: 1.0,
-    descriptions: [{ key: 'Serviço', value: 'Stark Bank Trial Invoice' }],
+    descriptions: [{ key: 'Serviço', value: 'Trial' }],
   };
 }
 
